@@ -2,6 +2,7 @@ package claudecode
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,37 +28,53 @@ func Query(ctx context.Context, prompt string, options *Options) ([]Message, err
 	// Set environment variable to identify SDK
 	os.Setenv("CLAUDE_CODE_ENTRYPOINT", "sdk-go")
 
-	cmd, err := setupCommand(ctx, options)
+	cliPath, err := findCLIExecutable(options.Executable)
 	if err != nil {
 		return nil, err
 	}
 
-	stdin, stdout, stderr, err := createPipes(cmd)
-	if err != nil {
-		return nil, err
+	args := buildCommandArgs(options)
+	cmd := exec.CommandContext(ctx, cliPath, args...)
+
+	if options.Cwd != nil {
+		cmd.Dir = *options.Cwd
 	}
 
-	if err := cmd.Start(); err != nil {
+	// Set up stdin for the prompt
+	cmd.Stdin = strings.NewReader(prompt)
+
+	// Use CombinedOutput for simpler error handling - captures both stdout and stderr
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// CombinedOutput includes stderr, so we have the actual error message
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return nil, &ProcessError{
+				ExitCode: exitError.ExitCode(),
+				Stderr:   string(output), // Contains the actual error output
+				Stdout:   "",
+			}
+		}
 		return nil, &CLIConnectionError{
-			Message: "failed to start Claude CLI",
+			Message: "CLI process failed",
 			Cause:   err,
 		}
 	}
 
-	// Send prompt to stdin and close it
-	go func() {
-		defer stdin.Close()
-		if _, writeErr := stdin.Write([]byte(prompt)); writeErr != nil {
-			return
-		}
-	}()
+	// Parse the successful output
+	return parseSuccessfulOutput(output, options)
+}
 
-	messages, err := readOutput(stdout, options)
-	if err != nil {
-		return nil, handleReadError(err, stderr)
+func parseSuccessfulOutput(output []byte, options *Options) ([]Message, error) {
+	reader := bytes.NewReader(output)
+	outputFormat := OutputFormatStreamJSON
+	if options.OutputFormat != nil {
+		outputFormat = *options.OutputFormat
 	}
 
-	return messages, waitForCommand(cmd, stderr)
+	if outputFormat == OutputFormatText {
+		return readTextOutput(reader)
+	}
+	return readMessages(reader)
 }
 
 func setupCommand(ctx context.Context, options *Options) (*exec.Cmd, error) {
@@ -116,38 +133,6 @@ func readOutput(stdout io.ReadCloser, options *Options) ([]Message, error) {
 	return readMessages(stdout)
 }
 
-func handleReadError(_ error, stderr io.ReadCloser) error {
-	stderrBytes, readErr := io.ReadAll(stderr)
-	if readErr != nil {
-		stderrBytes = []byte("failed to read stderr")
-	}
-	return &ProcessError{
-		ExitCode: -1,
-		Stderr:   string(stderrBytes),
-		Stdout:   "",
-	}
-}
-
-func waitForCommand(cmd *exec.Cmd, stderr io.ReadCloser) error {
-	if err := cmd.Wait(); err != nil {
-		stderrBytes, readErr := io.ReadAll(stderr)
-		if readErr != nil {
-			stderrBytes = []byte("failed to read stderr")
-		}
-		if exitError, ok := err.(*exec.ExitError); ok {
-			return &ProcessError{
-				ExitCode: exitError.ExitCode(),
-				Stderr:   string(stderrBytes),
-				Stdout:   "",
-			}
-		}
-		return &CLIConnectionError{
-			Message: "CLI process failed",
-			Cause:   err,
-		}
-	}
-	return nil
-}
 
 // QueryStreamWithRequest executes a streaming query using the TypeScript/Python SDK compatible request format
 func QueryStreamWithRequest(ctx context.Context, request QueryRequest) (<-chan Message, <-chan error) {
@@ -306,13 +291,19 @@ func streamMessages(ctx context.Context, stdout io.ReadCloser, messageChan chan<
 func waitForStreamCommand(cmd *exec.Cmd, stderr io.ReadCloser, errorChan chan<- error) {
 	if err := cmd.Wait(); err != nil {
 		stderrBytes, readErr := io.ReadAll(stderr)
+		var stderrContent string
 		if readErr != nil {
-			stderrBytes = []byte("failed to read stderr")
+			stderrContent = fmt.Sprintf("failed to read stderr: %v (command error: %v)", readErr, err)
+		} else {
+			stderrContent = string(stderrBytes)
+			if stderrContent == "" {
+				stderrContent = fmt.Sprintf("no stderr output (command error: %v)", err)
+			}
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			errorChan <- &ProcessError{
 				ExitCode: exitError.ExitCode(),
-				Stderr:   string(stderrBytes),
+				Stderr:   stderrContent,
 				Stdout:   "",
 			}
 		} else {
