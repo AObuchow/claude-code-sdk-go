@@ -175,13 +175,24 @@ func QueryStream(ctx context.Context, prompt string, options *Options) (<-chan M
 			return
 		}
 
+		// Start reading stderr concurrently to avoid pipe timing issues
+		stderrChan := make(chan string, 1)
+		go func() {
+			defer close(stderrChan)
+			if stderrBytes, readErr := io.ReadAll(stderr); readErr == nil {
+				stderrChan <- string(stderrBytes)
+			} else {
+				stderrChan <- fmt.Sprintf("failed to read stderr: %v", readErr)
+			}
+		}()
+
 		go sendPrompt(stdin, prompt)
 
 		if !streamMessages(ctx, stdout, messageChan, errorChan) {
 			return
 		}
 
-		waitForStreamCommand(cmd, stderr, errorChan)
+		waitForStreamCommandWithStderr(cmd, stderrChan, errorChan)
 	}()
 
 	return messageChan, errorChan
@@ -313,6 +324,32 @@ func waitForStreamCommand(cmd *exec.Cmd, stderr io.ReadCloser, errorChan chan<- 
 			}
 		}
 	}
+}
+
+func waitForStreamCommandWithStderr(cmd *exec.Cmd, stderrChan <-chan string, errorChan chan<- error) {
+	err := cmd.Wait()
+	
+	// Always read from stderrChan to avoid blocking the stderr reading goroutine
+	stderrContent := <-stderrChan
+	
+	if err != nil {
+		if stderrContent == "" {
+			stderrContent = fmt.Sprintf("no stderr output (command error: %v)", err)
+		}
+		if exitError, ok := err.(*exec.ExitError); ok {
+			errorChan <- &ProcessError{
+				ExitCode: exitError.ExitCode(),
+				Stderr:   stderrContent,
+				Stdout:   "",
+			}
+		} else {
+			errorChan <- &CLIConnectionError{
+				Message: "CLI process failed",
+				Cause:   err,
+			}
+		}
+	}
+	// If err == nil, we successfully read stderr but don't need to do anything with it
 }
 
 // findCLIExecutable finds the Claude Code CLI executable
