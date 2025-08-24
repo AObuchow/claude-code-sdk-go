@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	claudecode "github.com/yukifoo/claude-code-sdk-go"
+	claudecode "github.com/AObuchow/claude-code-sdk-go"
 )
 
 // basicExample demonstrates a simple question
@@ -88,8 +88,8 @@ func withToolsExample(ctx context.Context) {
 				}
 			}
 		case *claudecode.ResultMessage:
-			if msg.CostUSD > 0 {
-				fmt.Printf("\nCost: $%.4f\n", msg.CostUSD)
+			if msg.TotalCostUSD != nil && *msg.TotalCostUSD > 0 {
+				fmt.Printf("\nCost: $%.4f\n", *msg.TotalCostUSD)
 			}
 		}
 	}

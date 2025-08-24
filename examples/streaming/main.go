@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	claudecode "github.com/yukifoo/claude-code-sdk-go"
+	claudecode "github.com/AObuchow/claude-code-sdk-go"
 )
 
 func main() {

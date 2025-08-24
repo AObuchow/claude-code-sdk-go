@@ -1,7 +1,7 @@
 # Claude Code SDK for Go
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/yukifoo/claude-code-sdk-go.svg)](https://pkg.go.dev/github.com/yukifoo/claude-code-sdk-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yukifoo/claude-code-sdk-go)](https://goreportcard.com/report/github.com/yukifoo/claude-code-sdk-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/AObuchow/claude-code-sdk-go.svg)](https://pkg.go.dev/github.com/AObuchow/claude-code-sdk-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/AObuchow/claude-code-sdk-go)](https://goreportcard.com/report/github.com/AObuchow/claude-code-sdk-go)
 
 A Go SDK for Claude Code that provides programmatic access to Claude's agentic coding capabilities. This SDK wraps the Claude Code CLI and provides a Go-native interface compatible with the TypeScript and Python SDKs.
 
@@ -25,7 +25,7 @@ A Go SDK for Claude Code that provides programmatic access to Claude's agentic c
 ## Installation
 
 ```bash
-go get github.com/yukifoo/claude-code-sdk-go
+go get github.com/AObuchow/claude-code-sdk-go
 ```
 
 ## Quick Start
@@ -40,7 +40,7 @@ import (
     "fmt"
     "log"
     
-    claudecode "github.com/yukifoo/claude-code-sdk-go"
+    claudecode "github.com/AObuchow/claude-code-sdk-go"
 )
 
 func main() {
@@ -86,7 +86,7 @@ import (
     "fmt"
     "log"
     
-    claudecode "github.com/yukifoo/claude-code-sdk-go"
+    claudecode "github.com/AObuchow/claude-code-sdk-go"
 )
 
 func main() {
