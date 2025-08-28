@@ -839,6 +839,14 @@ func parseContentBlock(rawBlock interface{}) (ContentBlock, error) {
 			IsError:   isError,
 		}, nil
 
+	case ContentBlockTypeThinking:
+		thinking, _ := blockMap["thinking"].(string)
+		signature, _ := blockMap["signature"].(string)
+		return &ThinkingBlock{
+			Thinking:  thinking,
+			Signature: signature,
+		}, nil
+
 	default:
 		return nil, &CLIJSONDecodeError{
 			Data:  fmt.Sprintf("%v", rawBlock),

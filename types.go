@@ -26,6 +26,7 @@ const (
 	ContentBlockTypeText       ContentBlockType = "text"
 	ContentBlockTypeToolUse    ContentBlockType = "tool_use"
 	ContentBlockTypeToolResult ContentBlockType = "tool_result"
+	ContentBlockTypeThinking   ContentBlockType = "thinking"
 )
 
 // ContentBlock represents a block of content within a message
@@ -62,6 +63,16 @@ type ToolResultBlock struct {
 
 func (t *ToolResultBlock) Type() ContentBlockType {
 	return ContentBlockTypeToolResult
+}
+
+// ThinkingBlock represents a thinking content block
+type ThinkingBlock struct {
+	Thinking  string `json:"thinking"`
+	Signature string `json:"signature,omitempty"`
+}
+
+func (t *ThinkingBlock) Type() ContentBlockType {
+	return ContentBlockTypeThinking
 }
 
 // AssistantMessage represents a message from the assistant

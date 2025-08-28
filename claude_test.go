@@ -85,6 +85,15 @@ func TestContentBlocks(t *testing.T) {
 	if toolResultBlock.Type() != ContentBlockTypeToolResult {
 		t.Errorf("Expected ContentBlockTypeToolResult, got %s", toolResultBlock.Type())
 	}
+
+	// Test ThinkingBlock
+	thinkingBlock := &ThinkingBlock{
+		Thinking:  "This is test thinking content.",
+		Signature: "test-signature",
+	}
+	if thinkingBlock.Type() != ContentBlockTypeThinking {
+		t.Errorf("Expected ContentBlockTypeThinking, got %s", thinkingBlock.Type())
+	}
 }
 
 func TestErrors(t *testing.T) {
@@ -140,6 +149,30 @@ func TestParseContentBlocks(t *testing.T) {
 	}
 	if len(blocks) != 1 {
 		t.Errorf("Expected 1 block, got %d", len(blocks))
+	}
+
+	// Test thinking content block
+	thinkingContent := map[string]interface{}{
+		"type":      "thinking",
+		"thinking":  "This is test thinking content.",
+		"signature": "test-signature",
+	}
+	blocks, err = parseContentBlocks(thinkingContent)
+	if err != nil {
+		t.Fatalf("Failed to parse thinking content: %v", err)
+	}
+	if len(blocks) != 1 {
+		t.Errorf("Expected 1 thinking block, got %d", len(blocks))
+	}
+	if thinkingBlock, ok := blocks[0].(*ThinkingBlock); ok {
+		if thinkingBlock.Thinking != "This is test thinking content." {
+			t.Errorf("Expected correct thinking text, got %s", thinkingBlock.Thinking)
+		}
+		if thinkingBlock.Signature != "test-signature" {
+			t.Errorf("Expected correct signature, got %s", thinkingBlock.Signature)
+		}
+	} else {
+		t.Errorf("Expected ThinkingBlock, got %T", blocks[0])
 	}
 }
 
